@@ -1,25 +1,28 @@
 import Login from './components/Login'
-import Register from './components/Register'
+import Register from './pages/Register'
 import Header from './components/Header'
-import Home from './components/Home'
-import Profile from './components/Profile'
+import Home from './pages/Home'
+import Profile from './pages/Profile'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import PostDetail from "./components/PostDetail"
+import PostDetail from "./components/Posts/PostDetail"
+import Search from './components/Search'
+import Footer from './components/Footer'
+import './App.css' // Asegúrate de tener el estilo aquí
 
 function App() {
   return (
-    <div className='App'>
       <BrowserRouter>
         <Header />
-        <Routes>
-          <Route path='/' element={<Home />} />
-          <Route path='/register' element={<Register />} />
-          <Route path='/login' element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/post/:id" element={<PostDetail />} />
-        </Routes>
+          <Routes>
+            <Route path='/' element={<Home />} />
+            <Route path='/register' element={<Register />} />
+            <Route path='/login' element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/post/:id" element={<PostDetail />} />
+            <Route path="/search/:postName" element={<Search />} />
+          </Routes>
+        <Footer />
       </BrowserRouter>
-    </div>
   )
 }
 
