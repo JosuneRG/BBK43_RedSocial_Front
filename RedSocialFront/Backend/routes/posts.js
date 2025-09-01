@@ -1,90 +1,55 @@
-const express = require('express');
-const Post = require('../models/Post');
-const Comment = require('../models/Comment');
-const authMiddleware = require('../middleware/authMiddleware');
+const express = require("express");
 const router = express.Router();
+const auth = require("../middlewares/auth");
+const postController = require("../controllers/postsController");
 
-// Crear post
-router.post('/', authMiddleware, async (req, res) => {
-  try {
-    const post = new Post({
-      user: req.user.id,
-      content: req.body.content,
-    });
-    await post.save();
-    res.status(201).json(post);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al crear el post' });
-  }
-});
+// 1 - Crear un post (requiere autenticación)
+// POST -- http://localhost:3001/posts
+// Ejemplo:
+// {
+//   "title": "Título del post",
+//   "content": "Contenido del post",
+// }
+router.post("/", auth, postController.create);
 
-// Obtener posts (todos o filtrados)
-router.get('/', async (req, res) => {
-  try {
-    const posts = await Post.find()
-      .populate('user', 'username firstName')
-      .populate({
-        path: 'comments',
-        populate: { path: 'user', select: 'username' }
-      })
-      .sort({ createdAt: -1 });
-    res.json(posts);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener posts' });
-  }
-});
+// 2 - Actualizar un post (requiere autenticación)
+// PUT -- http://localhost:3001/posts/<postId>
+// {
+//   "title": "Nuevo título",
+//   "content": "Nuevo contenido"
+// }
+router.put("/:id", auth, postController.update);
 
-// Editar post (solo dueño)
-router.put('/:id', authMiddleware, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Post no encontrado' });
-    if (post.user.toString() !== req.user.id) return res.status(403).json({ message: 'No autorizado' });
+// 3 - N - Eliminar un post (requiere autenticación)
+// http://localhost:3001/posts/:id
+router.delete("/:id", auth, postController.delete);
 
-    post.content = req.body.content || post.content;
-    await post.save();
+// 4 - Obtener todos los posts con usuarios y comentarios (público)
+// http://localhost:3001/posts
+router.get("/", postController.getAll);
 
-    res.json(post);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar post' });
-  }
-});
+// 5 - N - Buscar posts por nombre (público)
+//GET - http://localhost:3001/posts/search/:name
+router.get("/search/:name", postController.getPostsByName);
 
-// Eliminar post (solo dueño)
-router.delete('/:id', authMiddleware, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Post no encontrado' });
-    if (post.user.toString() !== req.user.id) return res.status(403).json({ message: 'No autorizado' });
+// 6 - Buscar post por ID (público)
+//GET - http://localhost:3001/posts/id/:id
+router.get("/id/:id", postController.getById);
 
-    await post.remove();
+// 7 - Obtener posts paginados (público)
+//GET - http://localhost:3001/posts/paginated
+router.get("/paginated", postController.getPaginated);
 
-    res.json({ message: 'Post eliminado' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error al eliminar post' });
-  }
-});
+// 8 - N - Dar like a un post (requiere autenticación)
+//GET - http://localhost:3001/posts/:id/like
+router.post("/:id/like", auth, postController.like);
 
-// Dar/Quitar like
-router.post('/:id/like', authMiddleware, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Post no encontrado' });
+// 9 - N - Quitar like de un post (requiere autenticación)
+//GET - http://localhost:3001/posts/:id/unlike
+router.post("/:id/unlike", auth, postController.unlike);
 
-    const userId = req.user.id;
-    const liked = post.likes.includes(userId);
-
-    if (liked) {
-      post.likes = post.likes.filter((id) => id.toString() !== userId);
-    } else {
-      post.likes.push(userId);
-    }
-
-    await post.save();
-    res.json(post);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al dar/quitar like' });
-  }
-});
+//10- ver todos los posts
+//GET - http://localhost:3001/posts/getAllPosts
+router.get("/getAllPosts", postController.getAll);
 
 module.exports = router;
