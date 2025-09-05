@@ -1,12 +1,17 @@
 const User = require('../models/User');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const readableMongooseValidation = (err) => {
+  if (err && err.errors) {
+    return Object.values(err.errors).map(e => e.message).join(' | ');
+  }
+  return err?.message || 'Error de validación';
+};
+
 const UsersController = {
-  // Registro de usuario
+  // Registro (devuelve user + token para login automático)
   async register(req, res) {
     try {
       const { username, email, password } = req.body;
@@ -14,25 +19,36 @@ const UsersController = {
         return res.status(400).json({ message: 'Todos los campos son obligatorios' });
       }
 
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email ya registrado' });
+      // Duplica email/username?
+      const exists = await User.findOne({ $or: [{ email }, { username }] });
+      if (exists) {
+        const campo = exists.email === email ? 'email' : 'username';
+        return res.status(400).json({ message: `El ${campo} ya está registrado` });
       }
 
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      const newUser = await User.create({
-        username,
-        email,
-        password: hashedPassword
-      });
+      // NO hashees aquí; el pre('save') del modelo lo hace
+      const newUser = await User.create({ username, email, password });
 
       const { password: _, ...userData } = newUser.toObject();
-      res.status(201).json({ message: 'Usuario registrado', user: userData });
+
+      if (!JWT_SECRET) {
+        return res.status(500).json({ message: 'Falta JWT_SECRET en el backend' });
+      }
+      const token = jwt.sign({ _id: newUser._id }, JWT_SECRET, { expiresIn: '1h' });
+
+      return res.status(201).json({ message: 'Usuario registrado', user: userData, token });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error al registrar usuario' });
+      // Duplicados (índice único)
+      if (error.code === 11000) {
+        const campo = Object.keys(error.keyPattern || {})[0] || 'campo';
+        return res.status(400).json({ message: `El ${campo} ya está registrado` });
+      }
+      // Validaciones del schema
+      if (error.name === 'ValidationError') {
+        return res.status(400).json({ message: readableMongooseValidation(error) });
+      }
+      console.error('Register error:', error);
+      return res.status(500).json({ message: 'Error interno en registro' });
     }
   },
 
@@ -44,48 +60,48 @@ const UsersController = {
         return res.status(400).json({ message: 'Email y contraseña son requeridos' });
       }
 
-      const user = await User.findOne({ email });
+      // password tiene select:false en el schema
+      const user = await User.findOne({ email }).select('+password');
       if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(401).json({ message: 'Contraseña incorrecta' });
+      const ok = await user.comparePassword(password);
+      if (!ok) return res.status(401).json({ message: 'Contraseña incorrecta' });
 
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-      res.status(200).json({ message: 'Login exitoso', token });
+      const obj = user.toObject();
+      delete obj.password;
+
+      return res.status(200).json({ message: 'Login exitoso', user: obj, token });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error al iniciar sesión' });
+      console.error('Login error:', error);
+      return res.status(500).json({ message: 'Error interno en login' });
     }
   },
 
-  // Perfil del usuario
   async getProfile(req, res) {
     try {
       if (!req.user || !req.user._id) {
         return res.status(401).json({ message: 'No autorizado' });
       }
-
       const user = await User.findById(req.user._id);
       if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-      const userData = user.toObject();
-      delete userData.password;
-
-      res.status(200).json(userData);
+      const obj = user.toObject();
+      delete obj.password;
+      return res.status(200).json(obj);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: 'Error al obtener perfil de usuario' });
+      return res.status(500).json({ message: 'Error al obtener perfil de usuario' });
     }
   },
 
-  // Logout
-  async logout(req, res) {
+  async logout(_req, res) {
     try {
-      res.status(200).json({ message: 'Sesión cerrada. Borra el token del cliente' });
+      return res.status(200).json({ message: 'Sesión cerrada. Borra el token del cliente' });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ message: 'Error al cerrar sesión' });
+      return res.status(500).json({ message: 'Error al cerrar sesión' });
     }
   }
 };

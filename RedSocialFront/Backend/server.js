@@ -2,14 +2,18 @@
 const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
+
+const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
 const commentRoutes = require('./routes/comments');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; 
+const path = require("path");
 
 require('dotenv').config();
+
+console.log('JWT_SECRET cargado:', process.env.JWT_SECRET ? '✅' : '❌ FALTA');
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB conectado'))
@@ -22,9 +26,10 @@ app.get('/', (req, res) => {
   res.send('Servidor corriendo 🚀');
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/comments', commentRoutes);
+app.use("/img", express.static(path.join(__dirname, "img")));
+app.use('/users', userRoutes);
+app.use('/posts', postRoutes);
+app.use('/comments', commentRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

@@ -9,6 +9,13 @@ const postSchema = new mongoose.Schema(
       required: [true, 'El post debe pertenecer a un usuario'],
       index: true // Optimiza búsquedas de posts por usuario
     },
+    title: { 
+      type: String,
+      required: [true, 'El título es obligatorio'],
+      trim: true,
+      minlength: [3, 'El título debe tener al menos 3 caracteres'],
+      maxlength: [100, 'El título no puede superar los 100 caracteres']
+    },
     content: { 
       type: String, 
       required: [true, 'El contenido es obligatorio'], 

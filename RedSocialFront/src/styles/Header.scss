@@ -89,4 +89,25 @@
       }
     }
   }
+
+  .create-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    text-decoration: none;
+    background: #2563eb;
+    color: #fff;
+    padding: .45rem .75rem;
+    border-radius: 8px;
+    font-weight: 600;
+
+    &:hover {
+      background: #1e40af;
+    }
+  }
+
+  .logo-img {
+    height: 40px;
+    margin-right: 10px;
+  }
 }

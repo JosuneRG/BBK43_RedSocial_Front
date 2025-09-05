@@ -1,26 +1,16 @@
+// src/components/Header.jsx
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from './../redux/auth/authSlice';
-import { useState } from 'react';
-import '../styles/Header.scss'; 
-import { FiLogIn, FiUserPlus } from 'react-icons/fi';
+import logo from '../assets/logo6.png'; // 👈 importa el logo desde src/assets
+import '../styles/Header.scss';
 
 const Header = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  const [text, setText] = useState('');
-
-  const handleKeyUp = (e) => {
-    if (e.key === 'Enter' && text.trim() !== '') {
-      navigate(`/search/${text}`);
-      setText('');
-    }
-  };
-
-  const onLogout = (e) => {
-    e.preventDefault();
+  const onLogout = () => {
     dispatch(logout());
     navigate('/login');
   };
@@ -28,30 +18,24 @@ const Header = () => {
   return (
     <nav className="navbar">
       <div className="navbar-left">
-        <Link className="logo" to="/">RedSocial</Link>
-        <input
-          className="search-input"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyUp={handleKeyUp}
-          placeholder="Buscar post..."
-        />
+        <Link className="logo" to="/">
+          <img src={logo} alt="Logo Foro" className="logo-img" />
+          <span className="logo-text">ForoIdeas</span>
+        </Link>
       </div>
 
       <div className="navbar-right">
         {user ? (
           <>
+            {/* Ruta protegida que montamos en App.jsx con PrivateRoute */}
+            <Link to="/add" className="create-btn">➕ Crear</Link>
             <Link to="/profile" className="user-link">👤 {user.username}</Link>
             <button className="logout-btn" onClick={onLogout}>Salir</button>
           </>
         ) : (
           <>
-            <Link to="/login" className="auth-link">
-              <FiLogIn size={18} style={{ marginRight: '6px' }} /> Login
-            </Link>
-            <Link to="/register" className="auth-link">
-              <FiUserPlus size={18} style={{ marginRight: '6px' }} /> Registro
-            </Link>
+            <Link to="/login" className="auth-link">Login</Link>
+            <Link to="/register" className="auth-link">Registro</Link>
           </>
         )}
       </div>

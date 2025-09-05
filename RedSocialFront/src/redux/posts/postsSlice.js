@@ -1,3 +1,4 @@
+// src/redux/posts/postsSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import postsService from "./postsService";
 
@@ -5,29 +6,65 @@ const initialState = {
   posts: [],
   isLoading: false,
   post: {},
+  error: null,
 };
 
 export const getAll = createAsyncThunk("posts/getAll", async (_, thunkAPI) => {
-  try {
-    return await postsService.getAll();
-  } catch (error) {
-    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
-  }
+  try { return await postsService.getAll(); }
+  catch (e) { return thunkAPI.rejectWithValue(e.response?.data?.message || e.message); }
 });
 
 export const getById = createAsyncThunk("posts/getById", async (id, thunkAPI) => {
+  try { return await postsService.getById(id); }
+  catch (e) { return thunkAPI.rejectWithValue(e.response?.data?.message || e.message); }
+});
+
+export const getPostByName = createAsyncThunk("posts/getPostByName", async (name, thunkAPI) => {
+  try { return await postsService.getPostByName(name); }
+  catch (e) { return thunkAPI.rejectWithValue(e.response?.data?.message || e.message); }
+});
+
+export const updatePost = createAsyncThunk("posts/update", async ({ id, formData }, thunkAPI) => {
   try {
-    return await postsService.getById(id);
-  } catch (error) {
-    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+    const rawToken = localStorage.getItem("token");
+    const token = rawToken ? JSON.parse(rawToken) : null;
+    return await postsService.update(id, formData, token);
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
   }
 });
 
-export const getPostByName = createAsyncThunk("posts/getPostByName", async (postName, thunkAPI) => {
+export const deletePost = createAsyncThunk("posts/delete", async (id, thunkAPI) => {
   try {
-    return await postsService.getPostByName(postName);
-  } catch (error) {
-    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+    const rawToken = localStorage.getItem("token");
+    const token = rawToken ? JSON.parse(rawToken) : null;
+    return await postsService.remove(id, token);
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
+});
+
+// 👉 NUEVO: like / unlike automático según si ya ha dado like
+export const toggleLike = createAsyncThunk("posts/toggleLike", async (id, thunkAPI) => {
+  try {
+    const state = thunkAPI.getState();
+    const rawToken = localStorage.getItem("token");
+    const token = rawToken ? JSON.parse(rawToken) : null;
+
+    const current = state.posts.post;
+    const authUser = state.auth.user;
+    const userId = authUser?._id;
+
+    const likes = current?.likes || [];
+    const hasLiked = likes.includes(userId);
+
+    if (hasLiked) {
+      return await postsService.unlike(id, token); // -> post actualizado
+    } else {
+      return await postsService.like(id, token);
+    }
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
   }
 });
 
@@ -39,29 +76,59 @@ export const postsSlice = createSlice({
       state.isLoading = false;
       state.post = {};
       state.posts = [];
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(getAll.pending, (state) => {
-        state.isLoading = true;
-      })
+      // getAll
+      .addCase(getAll.pending, (state) => { state.isLoading = true; })
       .addCase(getAll.fulfilled, (state, action) => {
         state.posts = action.payload || [];
         state.isLoading = false;
       })
-      .addCase(getAll.rejected, (state) => {
-        state.isLoading = false;
+      .addCase(getAll.rejected, (state, action) => {
+        state.isLoading = false; state.error = action.payload;
       })
 
+      // getById
+      .addCase(getById.pending, (state) => { state.isLoading = true; })
       .addCase(getById.fulfilled, (state, action) => {
         state.post = action.payload || {};
         state.isLoading = false;
       })
+      .addCase(getById.rejected, (state, action) => {
+        state.isLoading = false; state.error = action.payload;
+      })
 
-      .addCase(getPostByName.fulfilled, (state, action) => {
-        state.posts = action.payload || [];
+      // update
+      .addCase(updatePost.pending, (state) => { state.isLoading = true; })
+      .addCase(updatePost.fulfilled, (state, action) => {
         state.isLoading = false;
+        const updated = action.payload?.post;
+        if (updated) {
+          state.post = updated;
+          state.posts = state.posts.map((p) => p._id === updated._id ? updated : p);
+        }
+      })
+      .addCase(updatePost.rejected, (state, action) => {
+        state.isLoading = false; state.error = action.payload;
+      })
+
+      // delete
+      .addCase(deletePost.fulfilled, (state, action) => {
+        const id = action.meta.arg;
+        state.posts = state.posts.filter((p) => p._id !== id);
+        if (state.post?._id === id) state.post = {};
+      })
+
+      // 👉 NUEVO: toggleLike
+      .addCase(toggleLike.fulfilled, (state, action) => {
+        const updated = action.payload; // el back devuelve el post
+        if (updated?._id) {
+          state.post = updated;
+          state.posts = state.posts.map((p) => (p._id === updated._id ? updated : p));
+        }
       });
   },
 });

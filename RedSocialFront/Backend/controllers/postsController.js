@@ -1,3 +1,4 @@
+// Backend/controllers/postController.js
 const Post = require('../models/Post');
 
 const PostsController = {
@@ -5,14 +6,15 @@ const PostsController = {
   async create(req, res) {
     try {
       const { title, content } = req.body;
-      if (!content) {
-        return res.status(400).json({ message: "El contenido es obligatorio" });
-      }
+      if (!content) return res.status(400).json({ message: "El contenido es obligatorio" });
+
+      const imagePath = req.file ? `img/${req.file.filename}` : null;
 
       const newPost = await Post.create({
         user: req.user._id,
         title,
-        content
+        content,
+        image: imagePath,
       });
 
       res.status(201).json({ message: "Post creado.", post: newPost });
@@ -29,6 +31,8 @@ const PostsController = {
       if (!post) return res.status(404).json({ message: "Post no encontrado" });
       if (post.user.toString() !== req.user._id.toString())
         return res.status(403).json({ message: "No autorizado" });
+
+      if (req.file) req.body.image = `img/${req.file.filename}`;
 
       const updatedPost = await Post.findByIdAndUpdate(
         req.params.id,
@@ -60,7 +64,7 @@ const PostsController = {
   },
 
   // Traer todos los posts
-  async getAll(req, res) {
+  async getAll(_req, res) {
     try {
       const posts = await Post.find()
         .populate("user", "username email")
@@ -73,11 +77,11 @@ const PostsController = {
     }
   },
 
-  // Buscar post por title
+  // Buscar por nombre (ahora busca en title o content)
   async getPostsByName(req, res) {
     try {
       const regex = new RegExp(req.params.name, "i");
-      const posts = await Post.find({ title: regex });
+      const posts = await Post.find({ $or: [{ title: regex }, { content: regex }] });
       res.status(200).json(posts);
     } catch (error) {
       console.error(error);
@@ -119,7 +123,7 @@ const PostsController = {
     }
   },
 
-  // Dar like
+  // Likes
   async like(req, res) {
     try {
       const post = await Post.findByIdAndUpdate(
@@ -134,7 +138,6 @@ const PostsController = {
     }
   },
 
-  // Quitar like
   async unlike(req, res) {
     try {
       const post = await Post.findByIdAndUpdate(
@@ -150,4 +153,4 @@ const PostsController = {
   }
 };
 
-module.exports = PostsController;
+module.exports = { PostsController };

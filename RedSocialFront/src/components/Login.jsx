@@ -6,11 +6,18 @@ import { notification } from 'antd';
 import '../styles/Register.scss'; // reutilizamos el mismo estilo
 
 const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+
+  const [formData, setFormData] = useState({
+     email: '', 
+     password: '' 
+  });
+
   const { email, password } = formData;
 
   const navigate = useNavigate();
+
   const dispatch = useDispatch();
+
   const { isError, isSuccess, message } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -26,23 +33,24 @@ const Login = () => {
     return () => dispatch(reset());
   }, [isError, isSuccess, message, navigate, dispatch]);
 
-  const onChange = (e) =>
+  const handleChnge = (e) =>
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
 
-  const onSubmit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('login...',formData);
     dispatch(login(formData));
   };
 
   return (
     <div className="form-container">
-      <form onSubmit={onSubmit}>
+      <form onSubmit={handleSubmit}>
         <h2>Login</h2>
-        <input type="email" name="email" value={email} onChange={onChange} placeholder="Email" required />
-        <input type="password" name="password" value={password} onChange={onChange} placeholder="Contraseña" required />
+        <input type="email" name="email" value={email} onChange={handleChnge} placeholder="Email" required />
+        <input type="password" name="password" value={password} onChange={handleChnge} placeholder="Contraseña" required />
         <button type="submit">Entrar</button>
       </form>
     </div>

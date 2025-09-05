@@ -1,55 +1,45 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middlewares/auth");
-const postController = require("../controllers/postsController");
+const auth = require("../middleware/authMiddleware");
+const { PostsController } = require('../controllers/postsController');
+const multer = require("multer");
+const path = require("path");
 
-// 1 - Crear un post (requiere autenticación)
-// POST -- http://localhost:3001/posts
-// Ejemplo:
-// {
-//   "title": "Título del post",
-//   "content": "Contenido del post",
-// }
-router.post("/", auth, postController.create);
+// Multer
+const storage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    cb(null, path.join(__dirname, '..', 'img'));
+  },
+  filename: function (_req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, Date.now() + ext);
+  },
+});
+const upload = multer({ storage });
 
-// 2 - Actualizar un post (requiere autenticación)
-// PUT -- http://localhost:3001/posts/<postId>
-// {
-//   "title": "Nuevo título",
-//   "content": "Nuevo contenido"
-// }
-router.put("/:id", auth, postController.update);
+// Crear / actualizar con imagen
+router.post('/', auth, upload.single('image'), PostsController.create);
+router.put('/:id', auth, upload.single('image'), PostsController.update);
 
-// 3 - N - Eliminar un post (requiere autenticación)
-// http://localhost:3001/posts/:id
-router.delete("/:id", auth, postController.delete);
+// Eliminar
+router.delete("/:id", auth, PostsController.delete);
 
-// 4 - Obtener todos los posts con usuarios y comentarios (público)
-// http://localhost:3001/posts
-router.get("/", postController.getAll);
+// Listado y búsquedas
+router.get("/", PostsController.getAll);
+router.get("/search/:name", PostsController.getPostsByName);
 
-// 5 - N - Buscar posts por nombre (público)
-//GET - http://localhost:3001/posts/search/:name
-router.get("/search/:name", postController.getPostsByName);
+// Detalle por id (ambas rutas soportadas)
+router.get("/:id", PostsController.getById);        // ← añadida para front
+router.get("/id/:id", PostsController.getById);
 
-// 6 - Buscar post por ID (público)
-//GET - http://localhost:3001/posts/id/:id
-router.get("/id/:id", postController.getById);
+// Paginación
+router.get("/paginated", PostsController.getPaginated);
 
-// 7 - Obtener posts paginados (público)
-//GET - http://localhost:3001/posts/paginated
-router.get("/paginated", postController.getPaginated);
+// Likes
+router.post("/:id/like", auth, PostsController.like);
+router.post("/:id/unlike", auth, PostsController.unlike);
 
-// 8 - N - Dar like a un post (requiere autenticación)
-//GET - http://localhost:3001/posts/:id/like
-router.post("/:id/like", auth, postController.like);
-
-// 9 - N - Quitar like de un post (requiere autenticación)
-//GET - http://localhost:3001/posts/:id/unlike
-router.post("/:id/unlike", auth, postController.unlike);
-
-//10- ver todos los posts
-//GET - http://localhost:3001/posts/getAllPosts
-router.get("/getAllPosts", postController.getAll);
+// Duplicada de getAll (si no la usas, puedes quitarla)
+router.get("/getAllPosts", PostsController.getAll);
 
 module.exports = router;

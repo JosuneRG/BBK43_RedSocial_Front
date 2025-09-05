@@ -1,17 +1,20 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-function authMiddleware(req, res, next) {
+const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) return res.status(401).json({ message: 'No token, autorización denegada' });
+  if (!token) {
+    return res.status(401).json({ message: 'No autorizado, falta token' });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Agrega info del usuario a req
+    // 👇 importante: usa _id (no id)
+    req.user = { _id: decoded._id };
     next();
-  } catch (error) {
-    res.status(401).json({ message: 'Token no válido' });
+  } catch (err) {
+    return res.status(401).json({ message: 'Token inválido' });
   }
-}
+};
 
 module.exports = authMiddleware;

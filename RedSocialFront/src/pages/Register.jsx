@@ -25,7 +25,7 @@ const Register = () => {
         message: 'Éxito',
         description: message || 'Usuario registrado correctamente',
       });
-      navigate('/login');
+      navigate('/profile'); // 👈 ya hay token y user
     }
 
     if (isError) {
@@ -42,6 +42,8 @@ const Register = () => {
 
   const onSubmit = (e) => {
     e.preventDefault();
+    console.log('login...',formData);
+    
     if (password !== password2) {
       return notification.error({
         message: 'Error',

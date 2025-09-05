@@ -14,29 +14,25 @@ const initialState = {
   message: '',
 };
 
-// Thunk: Registro
+// Thunks
 export const register = createAsyncThunk('auth/register', async (user, thunkAPI) => {
   try {
     return await authService.register(user);
   } catch (error) {
-    const message = error.response?.data?.errors
-      ? error.response.data.errors.map((e) => e.msg).join(' | ')
-      : error.message;
+    const message = error.response?.data?.message || error.message;
     return thunkAPI.rejectWithValue(message);
   }
 });
 
-// Thunk: Login
 export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) => {
   try {
     return await authService.login(userData);
   } catch (error) {
-    const message = error.response?.data?.error || error.message;
+    const message = error.response?.data?.message || error.message;
     return thunkAPI.rejectWithValue(message);
   }
 });
 
-// Thunk: Logout
 export const logout = createAsyncThunk('auth/logout', async () => {
   await authService.logout();
   localStorage.removeItem('user');
@@ -63,6 +59,8 @@ export const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
+        state.user = action.payload.user || null;   // 👈 guardamos en estado
+        state.token = action.payload.token || null; // 👈 guardamos en estado
         state.message = action.payload.message || 'Usuario registrado con éxito';
       })
       .addCase(register.rejected, (state, action) => {

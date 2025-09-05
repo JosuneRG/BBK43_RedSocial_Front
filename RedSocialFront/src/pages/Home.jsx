@@ -1,6 +1,6 @@
 import React from 'react';
-import Posts from '../components/Posts/Posts';
-import '../styles/home.scss'; // Asegúrate de importar el SCSS
+import Posts from '../components/Posts/Post';
+import '../styles/home.scss';
 
 const Home = () => {
   return (
