@@ -5,7 +5,7 @@ const { PostsController } = require('../controllers/postsController');
 const multer = require("multer");
 const path = require("path");
 
-// Multer
+// Multer: subir imágenes a /Backend/img
 const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
     cb(null, path.join(__dirname, '..', 'img'));
@@ -17,29 +17,38 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Crear / actualizar con imagen
+/**
+ * IMPORTANTE: el orden de las rutas cuenta.
+ * Rutas "fijas" como /me y /user/:userId deben ir ANTES de "/:id"
+ */
+
+// Crear y actualizar (con imagen) — requieren auth
 router.post('/', auth, upload.single('image'), PostsController.create);
 router.put('/:id', auth, upload.single('image'), PostsController.update);
 
-// Eliminar
+// Eliminar — requiere auth
 router.delete("/:id", auth, PostsController.delete);
 
-// Listado y búsquedas
+// Listado general y búsquedas públicas
 router.get("/", PostsController.getAll);
 router.get("/search/:name", PostsController.getPostsByName);
 
-// Detalle por id (ambas rutas soportadas)
-router.get("/:id", PostsController.getById);        // ← añadida para front
-router.get("/id/:id", PostsController.getById);
+// NUEVOS: posts por usuario y mis posts (requiere auth para /me)
+router.get("/user/:userId", PostsController.getByUser);
+router.get("/me", auth, PostsController.getMine);
 
-// Paginación
+// Paginación pública
 router.get("/paginated", PostsController.getPaginated);
 
-// Likes
+// Likes — requieren auth
 router.post("/:id/like", auth, PostsController.like);
 router.post("/:id/unlike", auth, PostsController.unlike);
 
-// Duplicada de getAll (si no la usas, puedes quitarla)
+// Detalle por id (ambas rutas soportadas)
+router.get("/id/:id", PostsController.getById);
+router.get("/:id", PostsController.getById);
+
+// (Opcional) duplicada de getAll si la usabas
 router.get("/getAllPosts", PostsController.getAll);
 
 module.exports = router;

@@ -3,7 +3,10 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getById, updatePost, deletePost, toggleLike } from '../../redux/posts/postsSlice';
+import CommentsBox from '../Comments/CommentsBox'; // <- ruta corregida
 import '../../styles/postDetail.scss';
+
+const API_BASE = 'http://localhost:3000';
 
 const PostDetail = () => {
   const { id } = useParams();
@@ -13,37 +16,52 @@ const PostDetail = () => {
   const { post, isLoading } = useSelector((state) => state.posts);
   const { user } = useSelector((state) => state.auth);
 
+  const postUserId = useMemo(() => {
+    if (!post) return null;
+    return typeof post.user === 'object' ? post.user._id : post.user;
+  }, [post]);
+
+  const userId = user?._id || null;
+
   const isOwner = useMemo(() => {
-    if (!post || !user) return false;
-    const postUserId = typeof post.user === 'object' ? post.user._id : post.user;
-    return postUserId === user?._id;
-  }, [post, user]);
+    if (!postUserId || !userId) return false;
+    return String(postUserId) === String(userId);
+  }, [postUserId, userId]);
 
   const hasLiked = useMemo(() => {
     const likes = post?.likes || [];
-    return user?._id ? likes.includes(user._id) : false;
-  }, [post, user]);
+    if (!userId) return false;
+    return likes.some((l) => String(l) === String(userId));
+  }, [post, userId]);
 
   // edición
   const [editMode, setEditMode] = useState(false);
-  const [title, setTitle] = useState(''), [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState('');
 
-  useEffect(() => { dispatch(getById(id)); }, [dispatch, id]);
+  useEffect(() => {
+    dispatch(getById(id));
+  }, [dispatch, id]);
 
   useEffect(() => {
     if (post?._id) {
       setTitle(post.title || '');
       setContent(post.content || '');
-      setPreview(post.image ? `http://localhost:3000/${post.image}` : '');
+      const initial = post.image ? `${API_BASE}/${post.image}` : '';
+      setPreview(initial);
     }
   }, [post]);
 
   const onFileChange = (e) => {
     const f = e.target.files?.[0];
     setImageFile(f || null);
-    setPreview(f ? URL.createObjectURL(f) : (post.image ? `http://localhost:3000/${post.image}` : ''));
+    if (f) {
+      setPreview(URL.createObjectURL(f));
+    } else {
+      setPreview(post?.image ? `${API_BASE}/${post.image}` : '');
+    }
   };
 
   const onCancel = () => {
@@ -51,7 +69,7 @@ const PostDetail = () => {
     setTitle(post.title || '');
     setContent(post.content || '');
     setImageFile(null);
-    setPreview(post.image ? `http://localhost:3000/${post.image}` : '');
+    setPreview(post.image ? `${API_BASE}/${post.image}` : '');
   };
 
   const onSave = async (e) => {
@@ -62,20 +80,26 @@ const PostDetail = () => {
     if (imageFile) fd.append('image', imageFile);
 
     const resAction = await dispatch(updatePost({ id: post._id, formData: fd }));
-    if (updatePost.fulfilled.match(resAction)) setEditMode(false);
-    else alert(resAction.payload || 'Error al actualizar el post');
+    if (updatePost.fulfilled.match(resAction)) {
+      setEditMode(false);
+    } else {
+      alert(resAction.payload || 'Error al actualizar el post');
+    }
   };
 
   const onDelete = async () => {
-    if (!confirm('¿Eliminar este post?')) return;
+    if (!window.confirm('¿Eliminar este post?')) return;
     const resAction = await dispatch(deletePost(post._id));
-    if (deletePost.fulfilled.match(resAction)) navigate('/');
-    else alert(resAction.payload || 'Error al eliminar');
+    if (deletePost.fulfilled.match(resAction)) {
+      navigate('/');
+    } else {
+      alert(resAction.payload || 'Error al eliminar');
+    }
   };
 
   const onToggleLike = async () => {
     if (!user) return alert('Debes iniciar sesión para dar like');
-    await dispatch(toggleLike(post._id)); // actualiza estado con el post devuelto
+    await dispatch(toggleLike(post._id));
   };
 
   if (isLoading && !post?._id) return <p style={{ padding: 16 }}>Cargando…</p>;
@@ -85,12 +109,12 @@ const PostDetail = () => {
     <div className="post-detail">
       {!editMode ? (
         <>
-          <h1 className="post-title">{post.title}</h1>
+          <h1 className="post-title">{post.title || 'Sin título'}</h1>
 
           {post.image && (
             <img
               className="post-image"
-              src={`http://localhost:3000/${post.image}`}
+              src={`${API_BASE}/${post.image}`}
               alt={post.title || 'imagen del post'}
             />
           )}
@@ -150,6 +174,9 @@ const PostDetail = () => {
           </div>
         </form>
       )}
+
+      {/* Comentarios */}
+      <CommentsBox postId={post._id} />
     </div>
   );
 };

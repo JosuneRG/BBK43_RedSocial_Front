@@ -29,6 +29,7 @@ const PostsController = {
     try {
       const post = await Post.findById(req.params.id);
       if (!post) return res.status(404).json({ message: "Post no encontrado" });
+
       if (post.user.toString() !== req.user._id.toString())
         return res.status(403).json({ message: "No autorizado" });
 
@@ -52,6 +53,7 @@ const PostsController = {
     try {
       const post = await Post.findById(req.params.id);
       if (!post) return res.status(404).json({ message: "Post no encontrado" });
+
       if (post.user.toString() !== req.user._id.toString())
         return res.status(403).json({ message: "No autorizado" });
 
@@ -68,7 +70,10 @@ const PostsController = {
     try {
       const posts = await Post.find()
         .populate("user", "username email")
-        .populate("comments.user", "username")
+        .populate({
+          path: "comments",
+          populate: { path: "user", select: "username" }
+        })
         .sort({ createdAt: -1 });
       res.status(200).json(posts);
     } catch (error) {
@@ -77,11 +82,12 @@ const PostsController = {
     }
   },
 
-  // Buscar por nombre (ahora busca en title o content)
+  // Buscar por nombre en título o contenido
   async getPostsByName(req, res) {
     try {
       const regex = new RegExp(req.params.name, "i");
-      const posts = await Post.find({ $or: [{ title: regex }, { content: regex }] });
+      const posts = await Post.find({ $or: [{ title: regex }, { content: regex }] })
+        .populate("user", "username");
       res.status(200).json(posts);
     } catch (error) {
       console.error(error);
@@ -94,12 +100,42 @@ const PostsController = {
     try {
       const post = await Post.findById(req.params.id)
         .populate("user", "username email")
-        .populate("comments.user", "username");
+        .populate({
+          path: "comments",
+          populate: { path: "user", select: "username" }
+        });
       if (!post) return res.status(404).json({ message: "Post no encontrado" });
       res.status(200).json(post);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Error al obtener post por ID" });
+    }
+  },
+
+  // NUEVO: posts de un usuario concreto (público)
+  async getByUser(req, res) {
+    try {
+      const userId = req.params.userId;
+      const posts = await Post.find({ user: userId })
+        .populate("user", "username")
+        .sort({ createdAt: -1 });
+      res.status(200).json(posts);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error al obtener posts del usuario" });
+    }
+  },
+
+  // NUEVO: posts del usuario autenticado
+  async getMine(req, res) {
+    try {
+      const posts = await Post.find({ user: req.user._id })
+        .populate("user", "username")
+        .sort({ createdAt: -1 });
+      res.status(200).json(posts);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error al obtener tus posts" });
     }
   },
 
