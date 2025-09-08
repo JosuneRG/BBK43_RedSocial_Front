@@ -1,141 +1,168 @@
-// Backend/controllers/postController.js
+// Backend/controllers/postsController.js
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
+
+const populatePost = (query) =>
+  query
+    .populate('user', 'username email')
+    .populate({
+      path: 'comments',
+      populate: { path: 'user', select: 'username avatar' },
+    });
 
 const PostsController = {
   // Crear post
   async create(req, res) {
     try {
       const { title, content } = req.body;
-      if (!content) return res.status(400).json({ message: "El contenido es obligatorio" });
+      if (!content) return res.status(400).json({ message: 'El contenido es obligatorio' });
 
       const imagePath = req.file ? `img/${req.file.filename}` : null;
 
       const newPost = await Post.create({
         user: req.user._id,
-        title,
+        title: title || '',
         content,
         image: imagePath,
       });
 
-      res.status(201).json({ message: "Post creado.", post: newPost });
+      const populated = await populatePost(Post.findById(newPost._id));
+      const post = await populated;
+      return res.status(201).json({ message: 'Post creado.', post });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al crear el post" });
+      console.error('create error:', error);
+      return res.status(500).json({ message: 'Error al crear el post' });
     }
   },
 
   // Actualizar post
   async update(req, res) {
     try {
-      const post = await Post.findById(req.params.id);
-      if (!post) return res.status(404).json({ message: "Post no encontrado" });
+      const { id } = req.params;
 
-      if (post.user.toString() !== req.user._id.toString())
-        return res.status(403).json({ message: "No autorizado" });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'ID de post no válido' });
+      }
 
-      if (req.file) req.body.image = `img/${req.file.filename}`;
+      const post = await Post.findById(id);
+      if (!post) return res.status(404).json({ message: 'Post no encontrado' });
 
-      const updatedPost = await Post.findByIdAndUpdate(
-        req.params.id,
-        { $set: req.body },
-        { new: true }
-      );
+      if (String(post.user) !== String(req.user._id))
+        return res.status(403).json({ message: 'No autorizado' });
 
-      res.status(200).json({ message: "Post actualizado", post: updatedPost });
+      const update = { ...req.body };
+      if (req.file) update.image = `img/${req.file.filename}`;
+
+      await Post.findByIdAndUpdate(id, { $set: update });
+
+      const populated = await populatePost(Post.findById(id));
+      const updatedPost = await populated;
+
+      return res.status(200).json({ message: 'Post actualizado', post: updatedPost });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al actualizar el post" });
+      console.error('update error:', error);
+      return res.status(500).json({ message: 'Error al actualizar el post' });
     }
   },
 
   // Eliminar post
   async delete(req, res) {
     try {
-      const post = await Post.findById(req.params.id);
-      if (!post) return res.status(404).json({ message: "Post no encontrado" });
+      const { id } = req.params;
 
-      if (post.user.toString() !== req.user._id.toString())
-        return res.status(403).json({ message: "No autorizado" });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'ID de post no válido' });
+      }
 
-      await Post.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: "Post eliminado correctamente" });
+      const post = await Post.findById(id);
+      if (!post) return res.status(404).json({ message: 'Post no encontrado' });
+
+      if (String(post.user) !== String(req.user._id))
+        return res.status(403).json({ message: 'No autorizado' });
+
+      await Post.findByIdAndDelete(id);
+      return res.status(200).json({ message: 'Post eliminado correctamente' });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al eliminar el post" });
+      console.error('delete error:', error);
+      return res.status(500).json({ message: 'Error al eliminar el post' });
     }
   },
 
   // Traer todos los posts
   async getAll(_req, res) {
     try {
-      const posts = await Post.find()
-        .populate("user", "username email")
-        .populate({
-          path: "comments",
-          populate: { path: "user", select: "username" }
-        })
-        .sort({ createdAt: -1 });
-      res.status(200).json(posts);
+      const posts = await populatePost(
+        Post.find().sort({ createdAt: -1 })
+      );
+      return res.status(200).json(await posts);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al obtener posts" });
+      console.error('getAll error:', error);
+      return res.status(500).json({ message: 'Error al obtener posts' });
     }
   },
 
   // Buscar por nombre en título o contenido
   async getPostsByName(req, res) {
     try {
-      const regex = new RegExp(req.params.name, "i");
-      const posts = await Post.find({ $or: [{ title: regex }, { content: regex }] })
-        .populate("user", "username");
-      res.status(200).json(posts);
+      const regex = new RegExp(req.params.name, 'i');
+      const posts = await populatePost(
+        Post.find({ $or: [{ title: regex }, { content: regex }] }).sort({ createdAt: -1 })
+      );
+      return res.status(200).json(await posts);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al buscar post por nombre" });
+      console.error('getPostsByName error:', error);
+      return res.status(500).json({ message: 'Error al buscar post por nombre' });
     }
   },
 
-  // Traer post por ID
+  // Traer post por ID (con validación)
   async getById(req, res) {
     try {
-      const post = await Post.findById(req.params.id)
-        .populate("user", "username email")
-        .populate({
-          path: "comments",
-          populate: { path: "user", select: "username" }
-        });
-      if (!post) return res.status(404).json({ message: "Post no encontrado" });
-      res.status(200).json(post);
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'ID de post no válido' });
+      }
+
+      const q = populatePost(Post.findById(id));
+      const post = await q;
+
+      if (!post) return res.status(404).json({ message: 'Post no encontrado' });
+      return res.status(200).json(post);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al obtener post por ID" });
+      console.error('getById error:', error);
+      return res.status(500).json({ message: 'Error al obtener post por ID' });
     }
   },
 
-  // NUEVO: posts de un usuario concreto (público)
+  // posts de un usuario concreto (público)
   async getByUser(req, res) {
     try {
-      const userId = req.params.userId;
-      const posts = await Post.find({ user: userId })
-        .populate("user", "username")
-        .sort({ createdAt: -1 });
-      res.status(200).json(posts);
+      const { userId } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: 'ID de usuario no válido' });
+      }
+
+      const posts = await populatePost(
+        Post.find({ user: userId }).sort({ createdAt: -1 })
+      );
+      return res.status(200).json(await posts);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al obtener posts del usuario" });
+      console.error('getByUser error:', error);
+      return res.status(500).json({ message: 'Error al obtener posts del usuario' });
     }
   },
 
-  // NUEVO: posts del usuario autenticado
+  // posts del usuario autenticado
   async getMine(req, res) {
     try {
-      const posts = await Post.find({ user: req.user._id })
-        .populate("user", "username")
-        .sort({ createdAt: -1 });
-      res.status(200).json(posts);
+      const posts = await populatePost(
+        Post.find({ user: req.user._id }).sort({ createdAt: -1 })
+      );
+      return res.status(200).json(await posts);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al obtener tus posts" });
+      console.error('getMine error:', error);
+      return res.status(500).json({ message: 'Error al obtener tus posts' });
     }
   },
 
@@ -146,47 +173,58 @@ const PostsController = {
       const limit = 10;
       const skip = (page - 1) * limit;
 
-      const posts = await Post.find()
-        .skip(skip)
-        .limit(limit)
-        .populate("user", "username")
-        .sort({ createdAt: -1 });
-
-      res.status(200).json(posts);
+      const posts = await populatePost(
+        Post.find().skip(skip).limit(limit).sort({ createdAt: -1 })
+      );
+      return res.status(200).json(await posts);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al paginar posts" });
+      console.error('getPaginated error:', error);
+      return res.status(500).json({ message: 'Error al paginar posts' });
     }
   },
 
-  // Likes
+  // Likes (devolver SIEMPRE el post poblado)
   async like(req, res) {
     try {
-      const post = await Post.findByIdAndUpdate(
-        req.params.id,
+      const { id } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'ID de post no válido' });
+      }
+
+      await Post.findByIdAndUpdate(
+        id,
         { $addToSet: { likes: req.user._id } },
         { new: true }
       );
-      res.status(200).json(post);
+
+      const post = await populatePost(Post.findById(id));
+      return res.status(200).json(await post);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al dar like" });
+      console.error('like error:', error);
+      return res.status(500).json({ message: 'Error al dar like' });
     }
   },
 
   async unlike(req, res) {
     try {
-      const post = await Post.findByIdAndUpdate(
-        req.params.id,
+      const { id } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'ID de post no válido' });
+      }
+
+      await Post.findByIdAndUpdate(
+        id,
         { $pull: { likes: req.user._id } },
         { new: true }
       );
-      res.status(200).json(post);
+
+      const post = await populatePost(Post.findById(id));
+      return res.status(200).json(await post);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error al quitar like" });
+      console.error('unlike error:', error);
+      return res.status(500).json({ message: 'Error al quitar like' });
     }
-  }
+  },
 };
 
 module.exports = { PostsController };

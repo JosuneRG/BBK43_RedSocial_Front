@@ -1,33 +1,25 @@
 // src/redux/comments/commentsService.js
 import axios from 'axios';
 
-const API = 'http://localhost:3000/comments';
+const API_URL = 'http://localhost:3000/comments';
 
-// Listar comentarios de un post
-const getByPost = async (postId) => {
-  const res = await axios.get(`${API}/post/${postId}`);
-  return res.data; // array de comments populate user
+export const fetchCommentsByPost = async (postId) => {
+  const res = await axios.get(`${API_URL}/post/${postId}`);
+  return res.data;
 };
 
-// Crear comentario (auth)
-const add = async (postId, content) => {
-  const token = JSON.parse(localStorage.getItem('token'));
+export const addComment = async ({ postId, content, token }) => {
   const res = await axios.post(
-    `${API}/${postId}`,
+    `${API_URL}/${postId}`,
     { content },
     { headers: { Authorization: `Bearer ${token}` } }
   );
-  return res.data; // { message, comment }
+  return res.data.comment;
 };
 
-// Eliminar comentario (auth; autor o dueño post)
-const remove = async (commentId) => {
-  const token = JSON.parse(localStorage.getItem('token'));
-  const res = await axios.delete(`${API}/${commentId}`, {
+export const deleteComment = async ({ commentId, token }) => {
+  const res = await axios.delete(`${API_URL}/${commentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return res.data; // { message }
+  return res.data;
 };
-
-const commentsService = { getByPost, add, remove };
-export default commentsService;

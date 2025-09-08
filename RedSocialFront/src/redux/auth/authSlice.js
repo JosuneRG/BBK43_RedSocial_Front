@@ -1,9 +1,8 @@
-// src/redux/auth/authSlice.js
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import authService from './authService';
 
 const userStorage = JSON.parse(localStorage.getItem('user'));
-const tokenStorage = JSON.parse(localStorage.getItem('token'));
+const tokenStorage = localStorage.getItem('token'); // ← string plano (sin JSON.parse)
 
 const initialState = {
   user: userStorage || null,
@@ -19,7 +18,8 @@ export const register = createAsyncThunk('auth/register', async (user, thunkAPI)
   try {
     return await authService.register(user); // { message, user?, token? }
   } catch (error) {
-    return thunkAPI.rejectWithValue(error.message);
+    const msg = error.response?.data?.message || error.message || 'Error';
+    return thunkAPI.rejectWithValue(msg);
   }
 });
 
@@ -28,7 +28,8 @@ export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) =
   try {
     return await authService.login(userData); // { message, user, token }
   } catch (error) {
-    return thunkAPI.rejectWithValue(error.message);
+    const msg = error.response?.data?.message || error.message || 'Error';
+    return thunkAPI.rejectWithValue(msg);
   }
 });
 
@@ -60,9 +61,11 @@ export const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        // si tu back devuelve user y token, podrías guardarlos aquí
-        // state.user = action.payload.user || null;
-        // state.token = action.payload.token || null;
+        // Si tu back ya devolviera user y token, podrías setearlos aquí:
+        if (action.payload?.user && action.payload?.token) {
+          state.user = action.payload.user;
+          state.token = action.payload.token;
+        }
         state.message = action.payload?.message || 'Usuario registrado con éxito';
       })
       .addCase(register.rejected, (state, action) => {

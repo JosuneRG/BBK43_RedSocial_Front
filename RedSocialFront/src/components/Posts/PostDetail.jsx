@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getById, updatePost, deletePost, toggleLike } from '../../redux/posts/postsSlice';
-import CommentsBox from '../Comments/CommentsBox'; // <- ruta corregida
+import CommentsBox from '../Comments/CommentsBox';
 import '../../styles/postDetail.scss';
 
 const API_BASE = 'http://localhost:3000';
@@ -31,10 +31,11 @@ const PostDetail = () => {
   const hasLiked = useMemo(() => {
     const likes = post?.likes || [];
     if (!userId) return false;
+    // likes puede venir como array de strings u ObjectIds
     return likes.some((l) => String(l) === String(userId));
   }, [post, userId]);
 
-  // edición
+  // estado de edición
   const [editMode, setEditMode] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -42,26 +43,27 @@ const PostDetail = () => {
   const [preview, setPreview] = useState('');
 
   useEffect(() => {
-    dispatch(getById(id));
+    if (id) dispatch(getById(id));
   }, [dispatch, id]);
 
   useEffect(() => {
     if (post?._id) {
       setTitle(post.title || '');
       setContent(post.content || '');
-      const initial = post.image ? `${API_BASE}/${post.image}` : '';
-      setPreview(initial);
+      setPreview(post.image ? `${API_BASE}/${post.image}` : '');
     }
   }, [post]);
 
   const onFileChange = (e) => {
     const f = e.target.files?.[0];
     setImageFile(f || null);
-    if (f) {
-      setPreview(URL.createObjectURL(f));
-    } else {
-      setPreview(post?.image ? `${API_BASE}/${post.image}` : '');
-    }
+    setPreview(
+      f
+        ? URL.createObjectURL(f)
+        : post?.image
+        ? `${API_BASE}/${post.image}`
+        : ''
+    );
   };
 
   const onCancel = () => {
@@ -123,10 +125,10 @@ const PostDetail = () => {
 
           <div className="post-meta">
             <span>Autor: {typeof post.user === 'object' ? post.user.username : '—'}</span>
+            {/* Si no usas comments embebidos, este contador puede ser 0. Lo “real” lo maneja CommentsBox */}
             <span>Comentarios: {post.comments?.length || 0}</span>
           </div>
 
-          {/* ❤️ Like */}
           <div className="like-row">
             <button className={`like-btn ${hasLiked ? 'liked' : ''}`} onClick={onToggleLike}>
               {hasLiked ? '💖 Quitar like' : '🤍 Dar like'}
@@ -175,8 +177,10 @@ const PostDetail = () => {
         </form>
       )}
 
-      {/* Comentarios */}
-      <CommentsBox postId={post._id} />
+      <CommentsBox
+        postId={post._id}
+        postOwnerId={typeof post.user === 'object' ? post.user._id : post.user}
+      />
     </div>
   );
 };

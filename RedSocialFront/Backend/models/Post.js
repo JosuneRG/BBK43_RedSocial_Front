@@ -7,13 +7,11 @@ const postSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'User', 
       required: [true, 'El post debe pertenecer a un usuario'],
-      index: true // Optimiza búsquedas de posts por usuario
+      index: true
     },
-    title: { 
+    title: {
       type: String,
-      required: [true, 'El título es obligatorio'],
       trim: true,
-      minlength: [3, 'El título debe tener al menos 3 caracteres'],
       maxlength: [100, 'El título no puede superar los 100 caracteres']
     },
     content: { 
@@ -24,27 +22,14 @@ const postSchema = new mongoose.Schema(
       maxlength: [500, 'El post no puede superar los 500 caracteres']
     },
     image: {
-      type: String, // opcional (por si los posts llevan foto)
+      type: String, // ruta relativa: "img/..."
     },
-    likes: [
-      { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-    ],
-    comments: [
-      { type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }
-    ],
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // Si quieres que "post.comments?.length" sea exacto, debes mantener este array sincronizado
+    // al crear/eliminar comentarios (push/pull del _id del comentario).
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }],
   },
   { timestamps: true }
 );
-
-// Evitar que un mismo usuario de like dos veces
-postSchema.methods.toggleLike = function (userId) {
-  const index = this.likes.indexOf(userId);
-  if (index === -1) {
-    this.likes.push(userId);
-  } else {
-    this.likes.splice(index, 1);
-  }
-  return this.save();
-};
 
 module.exports = mongoose.model('Post', postSchema);

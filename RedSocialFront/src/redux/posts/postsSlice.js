@@ -26,8 +26,7 @@ export const getPostByName = createAsyncThunk("posts/getPostByName", async (name
 
 export const updatePost = createAsyncThunk("posts/update", async ({ id, formData }, thunkAPI) => {
   try {
-    const rawToken = localStorage.getItem("token");
-    const token = rawToken ? JSON.parse(rawToken) : null;
+    const token = localStorage.getItem("token"); // 🔧 sin JSON.parse
     return await postsService.update(id, formData, token);
   } catch (e) {
     return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
@@ -36,30 +35,28 @@ export const updatePost = createAsyncThunk("posts/update", async ({ id, formData
 
 export const deletePost = createAsyncThunk("posts/delete", async (id, thunkAPI) => {
   try {
-    const rawToken = localStorage.getItem("token");
-    const token = rawToken ? JSON.parse(rawToken) : null;
+    const token = localStorage.getItem("token"); // 🔧 sin JSON.parse
     return await postsService.remove(id, token);
   } catch (e) {
     return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
   }
 });
 
-// 👉 NUEVO: like / unlike automático según si ya ha dado like
+// 👉 like / unlike automático
 export const toggleLike = createAsyncThunk("posts/toggleLike", async (id, thunkAPI) => {
   try {
     const state = thunkAPI.getState();
-    const rawToken = localStorage.getItem("token");
-    const token = rawToken ? JSON.parse(rawToken) : null;
+    const token = localStorage.getItem("token"); // 🔧 sin JSON.parse
 
     const current = state.posts.post;
     const authUser = state.auth.user;
     const userId = authUser?._id;
 
-    const likes = current?.likes || [];
-    const hasLiked = likes.includes(userId);
+    const likes = (current?.likes || []).map(String);
+    const hasLiked = userId ? likes.includes(String(userId)) : false;
 
     if (hasLiked) {
-      return await postsService.unlike(id, token); // -> post actualizado
+      return await postsService.unlike(id, token); // -> post actualizado (poblado)
     } else {
       return await postsService.like(id, token);
     }
@@ -122,9 +119,9 @@ export const postsSlice = createSlice({
         if (state.post?._id === id) state.post = {};
       })
 
-      // 👉 NUEVO: toggleLike
+      // 👉 toggleLike
       .addCase(toggleLike.fulfilled, (state, action) => {
-        const updated = action.payload; // el back devuelve el post
+        const updated = action.payload; // el back devuelve el post poblado
         if (updated?._id) {
           state.post = updated;
           state.posts = state.posts.map((p) => (p._id === updated._id ? updated : p));

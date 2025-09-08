@@ -1,40 +1,48 @@
 // src/redux/comments/commentsSlice.js
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import commentsService from './commentsService';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { fetchCommentsByPost, addComment, deleteComment } from './commentsService';
 
 const initialState = {
-  items: [],       // comentarios del post actual
+  items: [],
   isLoading: false,
-  isError: false,
-  message: '',
+  error: null,
 };
 
-// Thunks
-export const fetchComments = createAsyncThunk('comments/fetchByPost', async (postId, thunkAPI) => {
-  try {
-    return await commentsService.getByPost(postId);
-  } catch (e) {
-    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+export const getComments = createAsyncThunk(
+  'comments/getByPost',
+  async (postId, thunkAPI) => {
+    try {
+      return await fetchCommentsByPost(postId);
+    } catch (e) {
+      return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+    }
   }
-});
+);
 
-export const addComment = createAsyncThunk('comments/add', async ({ postId, content }, thunkAPI) => {
-  try {
-    const data = await commentsService.add(postId, content);
-    return data.comment;
-  } catch (e) {
-    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+export const createComment = createAsyncThunk(
+  'comments/create',
+  async ({ postId, content }, thunkAPI) => {
+    try {
+      const token = localStorage.getItem('token'); // 🔧 sin JSON.parse
+      return await addComment({ postId, content, token });
+    } catch (e) {
+      return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+    }
   }
-});
+);
 
-export const deleteComment = createAsyncThunk('comments/delete', async (commentId, thunkAPI) => {
-  try {
-    await commentsService.remove(commentId);
-    return commentId;
-  } catch (e) {
-    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+export const removeComment = createAsyncThunk(
+  'comments/remove',
+  async (commentId, thunkAPI) => {
+    try {
+      const token = localStorage.getItem('token'); // 🔧 sin JSON.parse
+      await deleteComment({ commentId, token });
+      return commentId;
+    } catch (e) {
+      return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+    }
   }
-});
+);
 
 const commentsSlice = createSlice({
   name: 'comments',
@@ -43,31 +51,24 @@ const commentsSlice = createSlice({
     resetComments: (state) => {
       state.items = [];
       state.isLoading = false;
-      state.isError = false;
-      state.message = '';
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchComments.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(fetchComments.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.items = action.payload || [];
-      })
-      .addCase(fetchComments.rejected, (state, action) => {
-        state.isLoading = false;
-        state.isError = true;
-        state.message = action.payload;
+      // get
+      .addCase(getComments.pending, (s) => { s.isLoading = true; s.error = null; })
+      .addCase(getComments.fulfilled, (s, a) => { s.isLoading = false; s.items = a.payload || []; })
+      .addCase(getComments.rejected, (s, a) => { s.isLoading = false; s.error = a.payload; })
+
+      // create
+      .addCase(createComment.fulfilled, (s, a) => {
+        if (a.payload) s.items.unshift(a.payload);
       })
 
-      .addCase(addComment.fulfilled, (state, action) => {
-        state.items = [action.payload, ...state.items];
-      })
-
-      .addCase(deleteComment.fulfilled, (state, action) => {
-        state.items = state.items.filter(c => c._id !== action.payload);
+      // remove
+      .addCase(removeComment.fulfilled, (s, a) => {
+        s.items = s.items.filter(c => c._id !== a.payload);
       });
   },
 });

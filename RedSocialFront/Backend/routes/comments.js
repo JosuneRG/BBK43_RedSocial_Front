@@ -1,9 +1,16 @@
-const express = require("express");
+// Backend/routes/comments.js
+const express = require('express');
 const router = express.Router();
-const auth = require("../middleware/authMiddleware");
+const auth = require('../middleware/authMiddleware');
 const commentsController = require('../controllers/commentsController');
 
-//Post - N _ http://localhost:3001/posts/68599f3f8cfcd1de2d85fdf8/comments
-router.post('/:postId', auth, commentsController.commentPost);
+// Crear comentario en un post (requiere login)
+router.post('/:postId', auth, commentsController.create);
+
+// Listar comentarios de un post (público)
+router.get('/post/:postId', commentsController.listByPost);
+
+// Borrar comentario por id (autor del comentario o del post)
+router.delete('/:id', auth, commentsController.remove);
 
 module.exports = router;

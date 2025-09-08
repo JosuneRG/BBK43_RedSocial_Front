@@ -9,7 +9,7 @@ const getAll = async () => {
 };
 
 const getById = async (id) => {
-  const res = await axios.get(`${API_URL}/posts/id/${id}`);
+  const res = await axios.get(`${API_URL}/posts/${id}`);
   return res.data;
 };
 
@@ -35,7 +35,7 @@ const remove = async (id, token) => {
   return res.data;
 };
 
-// 👉 NUEVO: like / unlike (devuelven el post actualizado)
+// 👉 Like / Unlike: devuelven el post actualizado (poblado)
 const like = async (id, token) => {
   const res = await axios.post(`${API_URL}/posts/${id}/like`, null, {
     headers: { Authorization: `Bearer ${token}` },
