@@ -4,13 +4,20 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const commentsController = require('../controllers/commentsController');
 
-// Crear comentario en un post (requiere login)
-router.post('/:postId', auth, commentsController.create);
-
-// Listar comentarios de un post (público)
+// Lista por post (pública)
 router.get('/post/:postId', commentsController.listByPost);
 
-// Borrar comentario por id (autor del comentario o del post)
+// Crear (auth)
+router.post('/:postId', auth, commentsController.create);
+
+// Actualizar (solo autor)
+router.put('/:id', auth, commentsController.update);
+
+// Borrar (solo autor)
 router.delete('/:id', auth, commentsController.remove);
+
+// Likes de comentario (auth)
+router.post('/:id/like', auth, commentsController.like);
+router.post('/:id/unlike', auth, commentsController.unlike);
 
 module.exports = router;

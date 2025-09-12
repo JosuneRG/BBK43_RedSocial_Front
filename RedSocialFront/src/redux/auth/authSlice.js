@@ -1,12 +1,13 @@
+// src/redux/auth/authSlice.js
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import authService from './authService';
 
-const userStorage = JSON.parse(localStorage.getItem('user'));
-const tokenStorage = localStorage.getItem('token'); // ← string plano (sin JSON.parse)
+const userStorage = JSON.parse(localStorage.getItem('user') || 'null');
+const tokenStorage = localStorage.getItem('token') || null;
 
 const initialState = {
-  user: userStorage || null,
-  token: tokenStorage || null,
+  user: userStorage,
+  token: tokenStorage,
   isError: false,
   isSuccess: false,
   isLoading: false,
@@ -16,10 +17,9 @@ const initialState = {
 // Registro
 export const register = createAsyncThunk('auth/register', async (user, thunkAPI) => {
   try {
-    return await authService.register(user); // { message, user?, token? }
+    return await authService.register(user);
   } catch (error) {
-    const msg = error.response?.data?.message || error.message || 'Error';
-    return thunkAPI.rejectWithValue(msg);
+    return thunkAPI.rejectWithValue(error?.response?.data?.message || 'Error al registrar');
   }
 });
 
@@ -28,8 +28,7 @@ export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) =
   try {
     return await authService.login(userData); // { message, user, token }
   } catch (error) {
-    const msg = error.response?.data?.message || error.message || 'Error';
-    return thunkAPI.rejectWithValue(msg);
+    return thunkAPI.rejectWithValue(error?.response?.data?.message || 'Credenciales inválidas');
   }
 });
 
@@ -61,11 +60,6 @@ export const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        // Si tu back ya devolviera user y token, podrías setearlos aquí:
-        if (action.payload?.user && action.payload?.token) {
-          state.user = action.payload.user;
-          state.token = action.payload.token;
-        }
         state.message = action.payload?.message || 'Usuario registrado con éxito';
       })
       .addCase(register.rejected, (state, action) => {
@@ -92,6 +86,9 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload || 'Credenciales inválidas';
+        // Asegura estado limpio
+        state.user = null;
+        state.token = null;
       })
 
       // LOGOUT

@@ -25,31 +25,30 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'La contraseña es obligatoria'],
       minlength: [6, 'La contraseña debe tener al menos 6 caracteres'],
-      select: false, // No devolver la contraseña en las consultas por defecto
+      select: false,
     },
-    bio: {
-      type: String,
-      maxlength: [200, 'La biografía no puede superar los 200 caracteres'],
-    },
-    avatar: {
-      type: String,
-      default: 'https://i.ibb.co/2kR8Yqr/default-avatar.png',
-    },
+    bio: { type: String, maxlength: [200, 'La biografía no puede superar los 200 caracteres'] },
+    avatar: { type: String, default: 'img/avatars/default-avatar.png' },
+
+    // NUEVO:
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );
 
-// Middleware: encriptar contraseña antes de guardar
+// hash password si cambia
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next(); // Si no cambia, seguimos
+  if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
-
-// Método para comparar contraseñas en login
-userSchema.methods.comparePassword = async function (passwordIntroducida) {
-  return await bcrypt.compare(passwordIntroducida, this.password);
+userSchema.methods.comparePassword = async function (plain) {
+  return bcrypt.compare(plain, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

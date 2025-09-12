@@ -8,6 +8,10 @@ import Profile from './pages/Profile'
 import PostDetail from './components/Posts/PostDetail'
 import Search from './components/Search'
 import Footer from './components/Footer'
+import CreatePost from './components/Posts/CreatePost';
+import PrivateRoute from './routes/PrivateRoute';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import './App.css'
 
 function App() {
@@ -22,10 +26,17 @@ function App() {
         <Route path='/post/:id' element={<PostDetail />} />
         <Route path='/search/:postName' element={<Search />} />
         <Route path="/search" element={<Search />} />
-        {/* compatibilidad con la vieja: /search/:postName */}
-        <Route path="/search/:postName" element={<Search />} />       
-        {/* si tienes la pantalla de crear: */}
-        {/* <Route path='/add' element={<CreatePost />} /> */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        
+        {/* Protegida */}
+        <Route path="/add" element={
+                                    <PrivateRoute>
+                                        <CreatePost />
+                                    </PrivateRoute>
+                                   }
+        />
+      
       </Routes>
       <Footer />
     </BrowserRouter>

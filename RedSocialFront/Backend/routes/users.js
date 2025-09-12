@@ -1,12 +1,12 @@
+// Backend/routes/users.js
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const usersController = require('../controllers/usersController');
-const User = require('../models/User');
 const multer = require('multer');
 const path = require('path');
 
-// Multer para avatar
+// Multer avatar
 const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
     cb(null, path.join(__dirname, '..', 'img', 'avatars'));
@@ -18,28 +18,33 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 1 - Registro
+// Auth básico
 router.post('/register', usersController.register);
-
-// 2 - Login
 router.post('/login', usersController.login);
-
-// 3 - Perfil del usuario autenticado
 router.get('/getProfile', auth, usersController.getProfile);
-
-// 4 - Logout
 router.get('/logout', auth, usersController.logout);
 
-// 5 - Editar perfil (username, email, bio)
+// Perfil edición
 router.put('/me', auth, usersController.updateProfile);
-
-// 6 - Cambiar contraseña
 router.put('/me/password', auth, usersController.changePassword);
-
-// 7 - Subir/actualizar avatar
 router.put('/me/avatar', auth, upload.single('avatar'), usersController.updateAvatar);
 
-// 8 - Buscar usuarios por username
+// Follow / unfollow
+router.post('/:userId/follow', auth, usersController.follow);
+router.post('/:userId/unfollow', auth, usersController.unfollow);
+
+// Mi red (followers/following + counts)
+router.get('/me/network', auth, usersController.getMyNetwork);
+
+// Posts que he likeado
+router.get('/me/liked-posts', auth, usersController.getMyLikedPosts);
+
+// Olvida contraseña login
+router.post('/forgot-password', usersController.forgotPassword);
+router.post('/reset-password', usersController.resetPassword);
+
+// Búsqueda perfiles (si la tienes)
+const User = require('../models/User');
 router.get('/search/:q', async (req, res) => {
   try {
     const q = req.params.q || '';

@@ -27,10 +27,10 @@ router.get('/user/:userId', PostsController.getByUser);
 router.get('/me', auth, PostsController.getMine);
 
 // Búsquedas / listados públicos
-router.get('/search/:name', PostsController.getPostsByName);
-router.get('/paginated', PostsController.getPaginated);
 router.get('/getAllPosts', PostsController.getAll); // opcional
 router.get('/', PostsController.getAll);
+router.get('/search/:name', PostsController.getPostsByName);
+router.get('/paginated', PostsController.getPaginated);
 
 // Crear / actualizar / eliminar (con imagen) — requieren auth
 router.post('/', auth, upload.single('image'), PostsController.create);

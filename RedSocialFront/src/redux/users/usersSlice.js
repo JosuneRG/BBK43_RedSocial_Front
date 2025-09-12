@@ -1,11 +1,25 @@
+// src/redux/users/usersSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import usersService from './usersService';
+import usersService, {
+  followUser,
+  unfollowUser,
+  getMyNetwork,
+  getMyLikedPosts,
+} from './usersService';
 
 const initialState = {
   me: null,
   searchResults: [],
   isLoading: false,
   error: null,
+
+  network: {
+    followers: [],
+    following: [],
+    followersCount: 0,
+    followingCount: 0,
+  },
+  likedPosts: [],
 };
 
 /* ============ THUNKS ============ */
@@ -55,6 +69,39 @@ export const searchUsers = createAsyncThunk('users/search', async (q, thunkAPI) 
   }
 });
 
+// Follow / Unfollow
+export const doFollow = createAsyncThunk('users/follow', async (userId, thunkAPI) => {
+  try {
+    return await followUser(userId); // { message }
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
+});
+
+export const doUnfollow = createAsyncThunk('users/unfollow', async (userId, thunkAPI) => {
+  try {
+    return await unfollowUser(userId); // { message }
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
+});
+
+export const fetchMyNetwork = createAsyncThunk('users/network', async (_, thunkAPI) => {
+  try {
+    return await getMyNetwork(); // {followers, following, followersCount, followingCount}
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
+});
+
+export const fetchMyLikedPosts = createAsyncThunk('users/likedPosts', async (_, thunkAPI) => {
+  try {
+    return await getMyLikedPosts(); // posts[]
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
+});
+
 /* ============ SLICE ============ */
 
 const usersSlice = createSlice({
@@ -82,6 +129,15 @@ const usersSlice = createSlice({
         state.me = null;
       });
 
+    // network / liked posts
+    builder
+      .addCase(fetchMyNetwork.fulfilled, (state, action) => {
+        state.network = action.payload || state.network;
+      })
+      .addCase(fetchMyLikedPosts.fulfilled, (state, action) => {
+        state.likedPosts = action.payload || [];
+      });
+
     // updateProfile
     builder
       .addCase(updateProfile.pending, (state) => {
@@ -90,7 +146,7 @@ const usersSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (action.payload) state.me = action.payload; // el back devuelve user actualizado
+        if (action.payload) state.me = action.payload; // back devuelve user actualizado
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;
@@ -120,10 +176,11 @@ const usersSlice = createSlice({
       .addCase(updateAvatar.fulfilled, (state, action) => {
         state.isLoading = false;
         if (!action.payload) return;
-        // Si el back devolvió usuario completo, úsalo; si sólo avatar, actualiza campo
         if (action.payload.avatar && !action.payload._id) {
+          // sólo avatar
           state.me = { ...(state.me || {}), avatar: action.payload.avatar };
         } else {
+          // usuario completo
           state.me = action.payload;
         }
       })
@@ -145,6 +202,44 @@ const usersSlice = createSlice({
       .addCase(searchUsers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || 'Error buscando usuarios';
+      });
+
+    // doFollow / doUnfollow — actualización inmediata del estado
+    builder
+      .addCase(doFollow.fulfilled, (state, action) => {
+        // El servicio no devuelve el usuario seguido; actualizamos por ID mínimo.
+        // A efectos del botón, basta con marcar que seguimos a "algo".
+        // Si quieres precisión, llama a fetchMyNetwork luego (lo hacemos en el botón).
+        // Aquí, si ya tenemos me.following o network.following, añadimos un placeholder.
+        const lastTarget = action.meta.arg; // userId seguido
+        if (state.me) {
+          const arr = Array.isArray(state.me.following) ? state.me.following : [];
+          if (!arr.some((id) => String(id) === String(lastTarget))) {
+            state.me.following = [...arr, lastTarget];
+          }
+        }
+        if (state.network) {
+          const arr = Array.isArray(state.network.following) ? state.network.following : [];
+          if (!arr.some((u) => String(u?._id || u) === String(lastTarget))) {
+            state.network.following = [...arr, { _id: lastTarget }];
+            state.network.followingCount = (state.network.followingCount || 0) + 1;
+          }
+        }
+      })
+      .addCase(doUnfollow.fulfilled, (state, action) => {
+        const lastTarget = action.meta.arg; // userId dejado de seguir
+        if (state.me && Array.isArray(state.me.following)) {
+          state.me.following = state.me.following.filter((id) => String(id) !== String(lastTarget));
+        }
+        if (state.network && Array.isArray(state.network.following)) {
+          state.network.following = state.network.following.filter(
+            (u) => String(u?._id || u) !== String(lastTarget)
+          );
+          state.network.followingCount = Math.max(
+            0,
+            (state.network.followingCount || 0) - 1
+          );
+        }
       });
   },
 });

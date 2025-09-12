@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getById, updatePost, deletePost, toggleLike } from '../../redux/posts/postsSlice';
 import CommentsBox from '../Comments/CommentsBox';
+import FollowButton from '../Follow/FollowButton';
 import '../../styles/postDetail.scss';
 
 const API_BASE = 'http://localhost:3000';
@@ -127,6 +128,10 @@ const PostDetail = () => {
             <span>Autor: {typeof post.user === 'object' ? post.user.username : '—'}</span>
             {/* Si no usas comments embebidos, este contador puede ser 0. Lo “real” lo maneja CommentsBox */}
             <span>Comentarios: {post.comments?.length || 0}</span>
+              {/* Botón seguir al autor si no soy yo */}
+              {typeof post.user === 'object' && (
+                <FollowButton targetUserId={post.user._id} className="ml-8" />
+              )}
           </div>
 
           <div className="like-row">

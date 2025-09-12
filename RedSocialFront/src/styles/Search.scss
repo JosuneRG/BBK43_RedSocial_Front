@@ -1,3 +1,5 @@
+/* src/styles/Search.scss */
+
 .search-page {
   max-width: 980px;
   margin: 0 auto;
@@ -18,6 +20,8 @@
       padding: .6rem .8rem;
       border: 1px solid #ddd;
       border-radius: 8px;
+      line-height: 1;
+      height: 40px;
 
       &:focus {
         outline: none;
@@ -27,13 +31,52 @@
     }
 
     button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: .6rem 1rem;
-      border: none;
+      height: 40px; /* igual que el input */
+      min-width: 110px;
+      border: 1px solid transparent;
       border-radius: 8px;
       background: #0a66ff;
       color: #fff;
       font-weight: 600;
       cursor: pointer;
+      transition: background .15s ease, transform .06s ease, box-shadow .15s ease;
+      user-select: none;
+
+      &:hover {
+        background: #095ae0;
+      }
+
+      &:active {
+        transform: translateY(1px);
+      }
+
+      &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(10,102,255,.25);
+      }
+
+      &:disabled,
+      &.is-busy {
+        cursor: not-allowed;
+        opacity: .8;
+        background: #0a66ff;
+      }
+
+      /* Spinner opcional cuando añadas la clase .is-busy desde React */
+      &.is-busy::after {
+        content: "";
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.6);
+        border-top-color: #fff;
+        animation: spin .6s linear infinite;
+      }
     }
   }
 
@@ -50,6 +93,7 @@
       background: #f7f7f7;
       cursor: pointer;
       font-weight: 600;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
 
       &.active {
         background: #0a66ff;
@@ -99,7 +143,7 @@
 
   .row {
     display: grid;
-    grid-template-columns: 48px 1fr;
+    grid-template-columns: 48px 1fr auto; /* hueco para botón seguir */
     gap: 10px;
     align-items: center;
     padding: 10px 12px;
@@ -121,6 +165,22 @@
 
       strong { color: #111; }
       .muted { color: #666; font-size: .9rem; }
+    }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Responsive pequeño */
+  @media (max-width: 520px) {
+    .search-bar {
+      flex-direction: column;
+
+      input, button {
+        width: 100%;
+        height: 42px;
+      }
     }
   }
 }

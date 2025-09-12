@@ -1,6 +1,9 @@
-const User = require('../models/User');
+// Backend/controllers/usersController.js
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const User = require('../models/User');
+const Post = require('../models/Post');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -62,7 +65,11 @@ const UsersController = {
       const user = await User.findOne({ email }).select('+password');
       if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
-      const ok = await user.comparePassword(password);
+      // Si tu modelo tiene user.comparePassword úsalo; si no, usa bcrypt.compare
+      const ok = typeof user.comparePassword === 'function'
+        ? await user.comparePassword(password)
+        : await bcrypt.compare(password, user.password);
+
       if (!ok) return res.status(401).json({ message: 'Contraseña incorrecta' });
 
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '1h' });
@@ -182,6 +189,143 @@ const UsersController = {
     } catch (e) {
       console.error(e);
       return res.status(500).json({ message: 'Error al actualizar avatar' });
+    }
+  },
+
+  // Seguir usuario
+  async follow(req, res) {
+    try {
+      const targetId = req.params.userId;
+      const me = req.user._id;
+      if (String(me) === String(targetId)) {
+        return res.status(400).json({ message: 'No puedes seguirte a ti mismo' });
+      }
+
+      await User.findByIdAndUpdate(me, { $addToSet: { following: targetId } });
+      await User.findByIdAndUpdate(targetId, { $addToSet: { followers: me } });
+
+      return res.status(200).json({ message: 'Ahora sigues a este usuario' });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al seguir' });
+    }
+  },
+
+  // Dejar de seguir
+  async unfollow(req, res) {
+    try {
+      const targetId = req.params.userId;
+      const me = req.user._id;
+
+      await User.findByIdAndUpdate(me, { $pull: { following: targetId } });
+      await User.findByIdAndUpdate(targetId, { $pull: { followers: me } });
+
+      return res.status(200).json({ message: 'Has dejado de seguir a este usuario' });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al dejar de seguir' });
+    }
+  },
+
+  // Listar followers/following del perfil autenticado
+  async getMyNetwork(req, res) {
+    try {
+      const me = await User.findById(req.user._id)
+        .populate('followers', 'username avatar')
+        .populate('following', 'username avatar');
+
+      if (!me) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+      return res.status(200).json({
+        followers: me.followers || [],
+        following: me.following || [],
+        followersCount: me.followers?.length || 0,
+        followingCount: me.following?.length || 0,
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al cargar red' });
+    }
+  },
+
+  // Posts likeados por el usuario autenticado
+  async getMyLikedPosts(req, res) {
+    try {
+      const posts = await Post.find({ likes: req.user._id })
+        .populate('user', 'username avatar')
+        .sort({ createdAt: -1 });
+      return res.status(200).json(posts);
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al cargar posts likeados' });
+    }
+  },
+  
+  // Dentro de UsersController:
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: 'Email requerido' });
+
+      const user = await User.findOne({ email });
+      // Por seguridad, respondemos igual aunque no exista:
+      if (!user) {
+        return res.status(200).json({
+          message: 'Si el email existe, hemos generado un enlace de reseteo.'
+        });
+      }
+
+      // Generar token y caducidad (15 min)
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.resetPasswordToken = token;
+      user.resetPasswordExpires = expires;
+      await user.save();
+
+      // Como es demo, devolvemos el enlace en la respuesta
+      const resetLink = `http://localhost:5173/reset-password/${token}`; // adapta el puerto del front si hace falta
+      return res.status(200).json({
+        message: 'Token generado. Usa el enlace para cambiar tu contraseña.',
+        resetLink,
+        token, // opcional
+        expiresAt: expires
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al generar enlace de reseteo' });
+    }
+  },
+
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: 'Token y nueva contraseña requeridos' });
+      }
+      // Buscar usuario por token y que no esté expirado
+      const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: new Date() }
+      }).select('+password');
+
+      if (!user) {
+        return res.status(400).json({ message: 'Token inválido o expirado' });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+      }
+
+      // Guardar nueva contraseña (se hashea en pre('save'))
+      user.password = newPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      return res.status(200).json({ message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: 'Error al restablecer contraseña' });
     }
   },
 };

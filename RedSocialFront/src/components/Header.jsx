@@ -29,7 +29,7 @@ const Header = () => {
       <div className="navbar-left">
         <Link className="logo" to="/">
           <img src={logo} alt="Logo Foro" className="logo-img" />
-          <span className="logo-text">ForoIdeas</span>
+          <span className="logo-text">FoRoLaNd</span>
         </Link>
 
         {/* mini buscador */}

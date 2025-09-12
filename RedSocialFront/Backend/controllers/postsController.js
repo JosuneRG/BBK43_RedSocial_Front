@@ -59,7 +59,8 @@ const PostsController = {
       const updatedPost = await populated;
 
       return res.status(200).json({ message: 'Post actualizado', post: updatedPost });
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('update error:', error);
       return res.status(500).json({ message: 'Error al actualizar el post' });
     }
@@ -101,17 +102,31 @@ const PostsController = {
     }
   },
 
-  // Buscar por nombre en título o contenido
+  // Buscar por TÍTULO (case-insensitive, escapando regex)
   async getPostsByName(req, res) {
     try {
-      const regex = new RegExp(req.params.name, 'i');
-      const posts = await populatePost(
-        Post.find({ $or: [{ title: regex }, { content: regex }] }).sort({ createdAt: -1 })
-      );
-      return res.status(200).json(await posts);
+      const raw = (req.params.name || '').trim();
+      if (!raw) {
+        // consulta vacía => lista vacía
+        return res.status(200).json([]);
+      }
+
+      // Escapar caracteres especiales de regex para evitar falsos positivos
+      const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i'); // coincidencia parcial, sin distinguir mayúsculas
+
+      const posts = await Post.find({ title: { $regex: regex } })
+        .populate('user', 'username avatar')
+        .populate({
+          path: 'comments',
+          populate: { path: 'user', select: 'username avatar' },
+        })
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json(posts);
     } catch (error) {
       console.error('getPostsByName error:', error);
-      return res.status(500).json({ message: 'Error al buscar post por nombre' });
+      return res.status(500).json({ message: 'Error al buscar post por título' });
     }
   },
 

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useParams, useNavigate, Link } from 'react-router-dom';
 import { getPostByName } from '../redux/posts/postsSlice';
 import { searchUsers, clearSearch } from '../redux/users/usersSlice';
+import FollowButton from '../components/Follow/FollowButton';
 import '../styles/Search.scss';
 
 const Search = () => {
@@ -129,12 +130,16 @@ const Search = () => {
                     alt={u.username}
                   />
                   <div className="usercol">
-                    <strong>{u.username}</strong>
+                    <strong>@{u.username}</strong>
                     <span className="muted">{u.email}</span>
                   </div>
+
+                  {/* Botón Seguir / Dejar de seguir */}
+                  <FollowButton targetUserId={u._id} />
                 </div>
               ))}
             </div>
+
           ) : (
             <p className="muted">No se encontraron usuarios.</p>
           )

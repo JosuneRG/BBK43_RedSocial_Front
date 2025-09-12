@@ -47,5 +47,35 @@ export const uploadAvatar = async (file) => {
   return res.data;
 };
 
-const usersService = { search, getProfile, getMe, updateMe, changePassword, uploadAvatar };
+export const followUser = async (userId) => {
+  const res = await axios.post(`${API}/${userId}/follow`, null, { headers: authHeader() });
+  return res.data;
+};
+
+export const unfollowUser = async (userId) => {
+  const res = await axios.post(`${API}/${userId}/unfollow`, null, { headers: authHeader() });
+  return res.data;
+};
+
+export const getMyNetwork = async () => {
+  const res = await axios.get(`${API}/me/network`, { headers: authHeader() });
+  return res.data; // {followers, following, followersCount, followingCount}
+};
+
+export const getMyLikedPosts = async () => {
+  const res = await axios.get(`${API}/me/liked-posts`, { headers: authHeader() });
+  return res.data; // array de posts
+};
+
+export const requestPasswordReset = async (email) => {
+  const res = await axios.post(`${API}/forgot-password`, { email });
+  return res.data; // { message, resetLink, token, expiresAt }
+};
+
+export const doResetPassword = async ({ token, newPassword }) => {
+  const res = await axios.post(`${API}/reset-password`, { token, newPassword });
+  return res.data; // { message }
+};
+
+const usersService = { search, getProfile, getMe, updateMe, changePassword, uploadAvatar, followUser, unfollowUser, getMyNetwork, getMyLikedPosts };
 export default usersService;

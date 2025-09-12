@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -5,9 +6,11 @@ import {
   updateProfile,
   updatePassword,
   updateAvatar,
+  fetchMyNetwork, // 👈 contador + listas
 } from '../redux/users/usersSlice';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import FollowButton from '../components/Follow/FollowButton';
 import '../styles/profile.scss';
 
 const API_BASE = 'http://localhost:3000';
@@ -25,7 +28,7 @@ const maskEmail = (email = '') => {
 
 const Profile = () => {
   const dispatch = useDispatch();
-  const { me, isLoading } = useSelector((s) => s.users);
+  const { me, isLoading, network } = useSelector((s) => s.users);
 
   const [myPosts, setMyPosts] = useState([]);
 
@@ -39,10 +42,17 @@ const Profile = () => {
   // avatar
   const [avatarPreview, setAvatarPreview] = useState('');
 
-  // cargar perfil si hay token
+  // toggles de listas
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+
+  // cargar perfil + red (followers/following)
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) dispatch(getMyProfile());
+    if (token) {
+      dispatch(getMyProfile());
+      dispatch(fetchMyNetwork()); // 👈 carga contadores y listas
+    }
   }, [dispatch]);
 
   // cargar posts del usuario logueado
@@ -143,13 +153,41 @@ const Profile = () => {
               <span className="label">Email:</span> {maskEmail(me.email)}
             </p>
             <p>
-              <span className="label">Contraseña:</span> ****** 
+              <span className="label">Contraseña:</span> ******
             </p>
             {me.bio && (
               <p>
                 <span className="label">Bio:</span> {me.bio}
               </p>
             )}
+
+            {/* Contadores de red */}
+            <div className="network">
+              <button
+                type="button"
+                className="pill"
+                onClick={() => {
+                  setShowFollowers((v) => !v);
+                  if (!network?.followers?.length) dispatch(fetchMyNetwork());
+                }}
+                aria-expanded={showFollowers}
+              >
+                Seguidores <span className="badge">{network?.followersCount ?? 0}</span>
+              </button>
+
+              <button
+                type="button"
+                className="pill"
+                onClick={() => {
+                  setShowFollowing((v) => !v);
+                  if (!network?.following?.length) dispatch(fetchMyNetwork());
+                }}
+                aria-expanded={showFollowing}
+              >
+                Siguiendo <span className="badge">{network?.followingCount ?? 0}</span>
+              </button>
+            </div>
+
             <button className="btn edit" onClick={() => setEditMode(true)}>
               Editar perfil
             </button>
@@ -194,6 +232,60 @@ const Profile = () => {
         )}
       </div>
 
+      {/* Listas de red */}
+      {showFollowers && (
+        <div className="network-list">
+          <h2>Seguidores</h2>
+          {network?.followers?.length ? (
+            <ul className="user-list">
+              {network.followers.map((u) => (
+                <li key={u._id} className="user-row">
+                  <img
+                    src={
+                      u.avatar ? `${API_BASE}/${u.avatar}` : 'https://i.ibb.co/2kR8Yqr/default-avatar.png'
+                    }
+                    alt={u.username}
+                  />
+                  <div className="meta">
+                    <strong>@{u.username}</strong>
+                  </div>
+                  {/* Puedes permitir seguir/seguir quitado desde aquí también */}
+                  <FollowButton targetUserId={u._id} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">Aún no tienes seguidores.</p>
+          )}
+        </div>
+      )}
+
+      {showFollowing && (
+        <div className="network-list">
+          <h2>Siguiendo</h2>
+          {network?.following?.length ? (
+            <ul className="user-list">
+              {network.following.map((u) => (
+                <li key={u._id} className="user-row">
+                  <img
+                    src={
+                      u.avatar ? `${API_BASE}/${u.avatar}` : 'https://i.ibb.co/2kR8Yqr/default-avatar.png'
+                    }
+                    alt={u.username}
+                  />
+                  <div className="meta">
+                    <strong>@{u.username}</strong>
+                  </div>
+                  <FollowButton targetUserId={u._id} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No sigues a nadie todavía.</p>
+          )}
+        </div>
+      )}
+
       {/* Cambiar contraseña */}
       <div className="password-card">
         <h2>Cambiar contraseña</h2>
@@ -233,7 +325,12 @@ const Profile = () => {
                 </Link>
                 <p>{p.content}</p>
                 {p.image && (
-                  <img src={`${API_BASE}/${p.image}`} width="320" alt="" className="post-img" />
+                  <img
+                    src={`${API_BASE}/${p.image}`}
+                    width="320"
+                    alt=""
+                    className="post-img"
+                  />
                 )}
               </div>
             ))}

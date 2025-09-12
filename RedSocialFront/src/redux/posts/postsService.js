@@ -14,7 +14,8 @@ const getById = async (id) => {
 };
 
 const getPostByName = async (postTitle) => {
-  const res = await axios.get(`${API_URL}/posts/search/${postTitle}`);
+  const q = encodeURIComponent((postTitle || '').trim());
+  const res = await axios.get(`${API_URL}/posts/search/${q}`);
   return res.data;
 };
 

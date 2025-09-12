@@ -10,8 +10,10 @@ const commentSchema = new mongoose.Schema(
       required: [true, 'El comentario no puede estar vacío'],
       trim: true,
       minlength: [1, 'El comentario no puede estar vacío'],
-      maxlength: [300, 'Máximo 300 caracteres']
+      maxlength: [300, 'Máximo 300 caracteres'],
     },
+    // NUEVO:
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
   { timestamps: true }
 );
