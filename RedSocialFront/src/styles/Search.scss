@@ -47,18 +47,9 @@
       transition: background .15s ease, transform .06s ease, box-shadow .15s ease;
       user-select: none;
 
-      &:hover {
-        background: #095ae0;
-      }
-
-      &:active {
-        transform: translateY(1px);
-      }
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(10,102,255,.25);
-      }
+      &:hover { background: #095ae0; }
+      &:active { transform: translateY(1px); }
+      &:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10,102,255,.25); }
 
       &:disabled,
       &.is-busy {
@@ -67,11 +58,9 @@
         background: #0a66ff;
       }
 
-      /* Spinner opcional cuando añadas la clase .is-busy desde React */
       &.is-busy::after {
         content: "";
-        width: 16px;
-        height: 16px;
+        width: 16px; height: 16px;
         border-radius: 50%;
         border: 2px solid rgba(255,255,255,.6);
         border-top-color: #fff;
@@ -84,6 +73,7 @@
     display: inline-flex;
     gap: 6px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
 
     .tab {
       padding: .4rem .8rem;
@@ -105,9 +95,10 @@
 
   .muted { color: #666; }
 
+  /* GRID de posts */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
   }
 
@@ -133,9 +124,11 @@
       gap: 10px;
       color: #666;
       font-size: .9rem;
+      flex-wrap: wrap;
     }
   }
 
+  /* LISTA de usuarios */
   .list {
     display: grid;
     gap: 10px;
@@ -152,8 +145,7 @@
     box-shadow: 0 6px 18px rgba(0,0,0,.06);
 
     .avatar {
-      width: 48px;
-      height: 48px;
+      width: 48px; height: 48px;
       border-radius: 50%;
       object-fit: cover;
     }
@@ -172,7 +164,32 @@
     to { transform: rotate(360deg); }
   }
 
-  /* Responsive pequeño */
+  /* =========================
+     RESPONSIVE
+     ========================= */
+
+  /* Tablets medianas: 2 columnas en grid */
+  @media (max-width: 1024px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /* Móviles grandes: 1 columna en grid y botón ocupará toda la fila en lista */
+  @media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+
+    .row {
+      grid-template-columns: 48px 1fr; /* quitamos la 3ª col */
+      .follow-btn {
+        grid-column: 1 / -1; /* botón a toda la fila */
+        justify-self: start;
+        margin-top: 6px;
+      }
+    }
+  }
+
+  /* Móviles pequeños: buscador en columna y controles 100% */
   @media (max-width: 520px) {
     .search-bar {
       flex-direction: column;
@@ -181,6 +198,21 @@
         width: 100%;
         height: 42px;
       }
+    }
+
+    .tabs {
+      width: 100%;
+      .tab { flex: 1; text-align: center; }
+    }
+
+    .card .thumb { height: 150px; }
+  }
+
+  /* Muy pequeños */
+  @media (max-width: 380px) {
+    .row {
+      grid-template-columns: 40px 1fr;
+      .avatar { width: 40px; height: 40px; }
     }
   }
 }

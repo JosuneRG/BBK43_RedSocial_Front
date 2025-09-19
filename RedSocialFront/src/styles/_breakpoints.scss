@@ -1,0 +1,11 @@
+// puntos de corte
+$bp-xl: 1200px;
+$bp-lg: 1024px;
+$bp-md: 768px;
+$bp-sm: 600px;
+$bp-xs: 420px;
+
+// mixin rápido
+@mixin max($w) {
+  @media (max-width: $w) { @content; }
+}

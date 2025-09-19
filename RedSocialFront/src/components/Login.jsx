@@ -96,6 +96,13 @@ const Login = () => {
           />
         </div>
 
+        {/* Enlace contraseña */}
+        <div style={{ marginTop: 16 }}>
+          <p className="forgot">
+            <a href="/forgot-password" style={{ color: '#0a66ff', fontWeight: 500, fontSize: '.95rem' }}>¿Has olvidado la contraseña?</a>
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
@@ -111,16 +118,12 @@ const Login = () => {
             cursor: isLoading ? 'not-allowed' : 'pointer'
           }}
         >
+          
           {isLoading ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
 
-      {/* Enlace contraseña */}
-      <div style={{ marginTop: 16 }}>
-         <p className="forgot">
-          <a href="/forgot-password" style={{ color: '#0a66ff', fontWeight: 500, fontSize: '.95rem' }}>¿Has olvidado la contraseña?</a>
-        </p>
-      </div>
+      
     </div>
   );
 };

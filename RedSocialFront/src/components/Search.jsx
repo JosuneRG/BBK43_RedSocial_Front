@@ -1,14 +1,15 @@
+// src/pages/Search.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useSearchParams, useParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useParams, Link } from 'react-router-dom';
 import { getPostByName } from '../redux/posts/postsSlice';
 import { searchUsers, clearSearch } from '../redux/users/usersSlice';
 import FollowButton from '../components/Follow/FollowButton';
+import DMWindow from '../components/Chat/DMWindow'; // ✅ usa tu componente real
 import '../styles/Search.scss';
 
 const Search = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
 
   // Compatibilidad con el patrón viejo /search/:postName
   const { postName: legacyParam } = useParams();
@@ -17,6 +18,9 @@ const Search = () => {
   // Estado local para el input
   const [text, setText] = useState(sp.get('q') || legacyParam || '');
   const type = sp.get('type') || 'posts'; // 'posts' | 'users'
+
+  // Estado para abrir el chat con un usuario
+  const [peer, setPeer] = useState(null);
 
   // Redux
   const { posts, isLoading: loadingPosts } = useSelector((s) => s.posts);
@@ -45,7 +49,6 @@ const Search = () => {
     const q = text.trim();
     if (!q) return;
     setSp({ q, type }); // usa query params
-    // o navegar directamente: navigate(`/search?q=${encodeURIComponent(q)}&type=${type}`);
   };
 
   // Cambiar pestaña (posts/users)
@@ -68,7 +71,9 @@ const Search = () => {
           placeholder={type === 'posts' ? 'Buscar posts…' : 'Buscar usuarios…'}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onSearch(e); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSearch(e);
+          }}
         />
         <button type="submit">Buscar</button>
       </form>
@@ -97,7 +102,9 @@ const Search = () => {
             <div className="grid">
               {posts.map((p) => (
                 <div className="card" key={p._id}>
-                  <Link to={`/post/${p._id}`}><h3>{p.title || 'Sin título'}</h3></Link>
+                  <Link to={`/post/${p._id}`}>
+                    <h3>{p.title || 'Sin título'}</h3>
+                  </Link>
                   <p className="excerpt">{p.content}</p>
                   {p.image && (
                     <img
@@ -126,7 +133,11 @@ const Search = () => {
                 <div key={u._id} className="row">
                   <img
                     className="avatar"
-                    src={u.avatar ? `http://localhost:3000/${u.avatar}` : 'https://i.ibb.co/2kR8Yqr/default-avatar.png'}
+                    src={
+                      u.avatar
+                        ? `http://localhost:3000/${u.avatar}`
+                        : 'https://i.ibb.co/2kR8Yqr/default-avatar.png'
+                    }
                     alt={u.username}
                   />
                   <div className="usercol">
@@ -134,17 +145,37 @@ const Search = () => {
                     <span className="muted">{u.email}</span>
                   </div>
 
-                  {/* Botón Seguir / Dejar de seguir */}
-                  <FollowButton targetUserId={u._id} />
+                  {/* Acciones: Seguir + Mensaje */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <FollowButton targetUserId={u._id} />
+                    <button
+                      className="btn msg-btn"
+                      onClick={() => setPeer(u)}
+                      style={{
+                        padding: '.45rem .8rem',
+                        borderRadius: '8px',
+                        border: '1px solid #0a66ff',
+                        background: '#f0f6ff',
+                        color: '#0a66ff',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      title={`Chatear con @${u.username}`}
+                    >
+                      💬 Mensaje
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-
           ) : (
             <p className="muted">No se encontraron usuarios.</p>
           )
         )}
       </div>
+
+      {/* Ventana de chat (se monta al elegir un usuario) */}
+      {peer && <DMWindow peer={peer} onClose={() => setPeer(null)} />}
     </div>
   );
 };

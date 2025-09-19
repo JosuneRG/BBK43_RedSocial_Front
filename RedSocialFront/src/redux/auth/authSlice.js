@@ -1,6 +1,7 @@
 // src/redux/auth/authSlice.js
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import authService from './authService';
+import { initSocket, disconnectSocket } from "../../lib/socket";
 
 const userStorage = JSON.parse(localStorage.getItem('user') || 'null');
 const tokenStorage = localStorage.getItem('token') || null;
@@ -26,7 +27,17 @@ export const register = createAsyncThunk('auth/register', async (user, thunkAPI)
 // Login
 export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) => {
   try {
-    return await authService.login(userData); // { message, user, token }
+
+    const res = await authService.login(userData);
+    // 👉 Guardar en localStorage
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("user", JSON.stringify(res.user));
+
+    // 👉 Conectar socket con token
+    initSocket(res.token);
+
+    return res;
+    // return await authService.login(userData); // { message, user, token }
   } catch (error) {
     return thunkAPI.rejectWithValue(error?.response?.data?.message || 'Credenciales inválidas');
   }
@@ -34,7 +45,19 @@ export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) =
 
 // Logout
 export const logout = createAsyncThunk('auth/logout', async () => {
-  await authService.logout();
+   try {
+    await authService.logout();
+    // 👉 Eliminar del localStorage
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // 👉 Desconectar socket
+    disconnectSocket();
+
+    return true;
+  } catch (e) {
+    return thunkAPI.rejectWithValue(e.response?.data?.message || e.message);
+  }
 });
 
 export const authSlice = createSlice({

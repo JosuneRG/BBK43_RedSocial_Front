@@ -1,3 +1,22 @@
+@use './breakpoints' as *;
+
+.navbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+
+  .navbar-left, .navbar-right { display: flex; align-items: center; gap: 10px; }
+  .logo-img { width: 36px; height: 36px; object-fit: contain; }
+
+  @include max($bp-sm) {
+    .navbar-right { gap: 6px; }
+    .create-btn { display: none; } // ocultar en móvil si hace falta
+    .logo-text { display: none; }  // deja solo el ícono en muy chico
+  }
+}
+
 .navbar {
   width: 100vw;
   background-color: rgba(0, 0, 0, 0.2); // semitransparente sobre degradado
